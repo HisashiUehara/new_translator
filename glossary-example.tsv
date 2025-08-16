@@ -1,0 +1,35 @@
+# English	Japanese
+# Technical terms
+API	API
+database	データベース
+server	サーバー
+client	クライアント
+authentication	認証
+authorization	認可
+encryption	暗号化
+decryption	復号化
+firewall	ファイアウォール
+load balancer	ロードバランサー
+microservice	マイクロサービス
+container	コンテナ
+orchestration	オーケストレーション
+deployment	デプロイメント
+monitoring	監視
+logging	ログ記録
+backup	バックアップ
+restore	復元
+scalability	スケーラビリティ
+performance	パフォーマンス
+latency	レイテンシ
+throughput	スループット
+availability	可用性
+reliability	信頼性
+maintenance	保守
+upgrade	アップグレード
+patch	パッチ
+version	バージョン
+release	リリース
+development	開発
+testing	テスト
+production	本番環境
+staging	ステージング環境
