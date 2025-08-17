@@ -45,7 +45,7 @@ docxja --input document.docx --output document-ja.docx \
 
 # Custom configuration
 docxja --input document.docx --output document-ja.docx \
-       --config config.yaml --report report.json
+       --config config.json --report report.json
 ```
 
 ## Configuration
@@ -75,15 +75,19 @@ export DEEPL_API_KEY="your-deepl-api-key"
 }
 ```
 
-#### config.yaml
-```yaml
-style: tech-ja-keitei
-translator:
-  type: openai
-  concurrency: 3
-  max_chars_per_call: 1500
-security:
-  redact_logs: true
+#### config.json
+```json
+{
+  "style": "tech-ja-keitei",
+  "translator": {
+    "type": "openai",
+    "concurrency": 3,
+    "max_chars_per_call": 1500
+  },
+  "security": {
+    "redact_logs": true
+  }
+}
 ```
 
 ### Glossary Format

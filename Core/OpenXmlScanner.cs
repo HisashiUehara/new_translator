@@ -1,7 +1,8 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
-using DocumentFormat.OpenXml.Drawing;
+using WordText = DocumentFormat.OpenXml.Wordprocessing.Text;
+using WordHyperlink = DocumentFormat.OpenXml.Wordprocessing.Hyperlink;
+using DrawingText = DocumentFormat.OpenXml.Drawing.Text;
 using DocxJaTranslator.Models;
 using System.Xml;
 
@@ -92,9 +93,9 @@ public sealed class OpenXmlScanner
         if (element == null) return;
 
         // Handle WordprocessingML text elements (w:t)
-        if (element is Text textElement)
+        if (element is WordText wordTextElement)
         {
-            var text = textElement.Text;
+            var text = wordTextElement.Text;
             if (!string.IsNullOrWhiteSpace(text))
             {
                 var xpath = xpathBuilder.BuildXPath();
@@ -102,14 +103,20 @@ public sealed class OpenXmlScanner
             }
         }
 
-        // Handle DrawingML text elements (a:t)
-        if (element is Drawing drawingElement)
+        // Handle DrawingML text elements (a:t) - search in all child elements
+        var drawingTextElements = element.Descendants<DrawingText>();
+        foreach (var drawingTextElement in drawingTextElements)
         {
-            CollectDrawingMLText(drawingElement, partUri, xpathBuilder, nodes);
+            var text = drawingTextElement.Text;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                var xpath = xpathBuilder.BuildXPath() + "//a:t";
+                nodes.Add(new TextNode(partUri, xpath, text, "a:t"));
+            }
         }
 
         // Handle hyperlinks (translate display text only)
-        if (element is Hyperlink hyperlinkElement)
+        if (element is WordHyperlink hyperlinkElement)
         {
             CollectHyperlinkText(hyperlinkElement, partUri, xpathBuilder, nodes);
         }
@@ -123,26 +130,10 @@ public sealed class OpenXmlScanner
         }
     }
 
-    private void CollectDrawingMLText(Drawing drawing, string partUri, XPathBuilder xpathBuilder, List<TextNode> nodes)
-    {
-        // Navigate through DrawingML structure to find text elements
-        var textElements = drawing.Descendants<Drawing.Text>();
-        
-        foreach (var textElement in textElements)
-        {
-            var text = textElement.Text;
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                var xpath = xpathBuilder.BuildXPath() + "//a:t";
-                nodes.Add(new TextNode(partUri, xpath, text, "a:t"));
-            }
-        }
-    }
-
-    private void CollectHyperlinkText(Hyperlink hyperlink, string partUri, XPathBuilder xpathBuilder, List<TextNode> nodes)
+    private void CollectHyperlinkText(WordHyperlink hyperlink, string partUri, XPathBuilder xpathBuilder, List<TextNode> nodes)
     {
         // Only collect text from hyperlink display elements, not the target
-        var textElements = hyperlink.Elements<Text>();
+        var textElements = hyperlink.Elements<WordText>();
         
         foreach (var textElement in textElements)
         {

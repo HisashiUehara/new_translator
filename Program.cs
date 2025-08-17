@@ -20,86 +20,69 @@ class Program
         var inputOption = new Option<string>(
             "--input",
             "Path to input DOCX file")
-        { IsRequired = true };
+        {
+            IsRequired = true
+        };
 
         var outputOption = new Option<string>(
             "--output",
-            "Path for output DOCX file")
-        { IsRequired = true };
-
-        var glossaryOption = new Option<string?>(
-            "--glossary",
-            "Path to glossary file (TSV format)");
-
-        var engineOption = new Option<string>(
-            "--engine",
-            "Translation engine: deepl, openai, or local")
-        { DefaultValueFactory = () => "openai" };
-
-        var translateCommentsOption = new Option<bool>(
-            "--translate-comments",
-            "Translate comments")
-        { DefaultValueFactory = () => true };
-
-        var noHeadersOption = new Option<bool>(
-            "--no-headers",
-            "Skip header translation")
-        { DefaultValueFactory = () => false };
-
-        var noFootnotesOption = new Option<bool>(
-            "--no-footnotes",
-            "Skip footnote translation")
-        { DefaultValueFactory = () => false };
-
-        var keepTrackChangesOption = new Option<bool>(
-            "--keep-track-changes",
-            "Keep Track Changes as-is")
-        { DefaultValueFactory = () => true };
-
-        var styleOption = new Option<string>(
-            "--style",
-            "Translation style (e.g., tech-ja-keitei)")
-        { DefaultValueFactory = () => "tech-ja-keitei" };
+            "Path to output DOCX file")
+        {
+            IsRequired = true
+        };
 
         var configOption = new Option<string?>(
             "--config",
-            "Path to YAML configuration file");
+            "Path to JSON configuration file");
 
-        var reportOption = new Option<string?>(
-            "--report",
-            "Path for JSON report output");
+        var glossaryOption = new Option<string?>(
+            "--glossary",
+            "Path to TSV glossary file");
 
         var logOption = new Option<string?>(
             "--log",
-            "Path for log output");
+            "Path to log file");
+
+        var verboseOption = new Option<bool>(
+            "--verbose",
+            "Enable verbose logging");
+
+        var dryRunOption = new Option<bool>(
+            "--dry-run",
+            "Perform translation without saving");
+
+        var forceOption = new Option<bool>(
+            "--force",
+            "Overwrite output file if it exists");
+
+        var helpOption = new Option<bool>(
+            "--help",
+            "Show help information");
 
         // Add options to command
         rootCommand.AddOption(inputOption);
         rootCommand.AddOption(outputOption);
-        rootCommand.AddOption(glossaryOption);
-        rootCommand.AddOption(engineOption);
-        rootCommand.AddOption(translateCommentsOption);
-        rootCommand.AddOption(noHeadersOption);
-        rootCommand.AddOption(noFootnotesOption);
-        rootCommand.AddOption(keepTrackChangesOption);
-        rootCommand.AddOption(styleOption);
         rootCommand.AddOption(configOption);
-        rootCommand.AddOption(reportOption);
+        rootCommand.AddOption(glossaryOption);
         rootCommand.AddOption(logOption);
+        rootCommand.AddOption(verboseOption);
+        rootCommand.AddOption(dryRunOption);
+        rootCommand.AddOption(forceOption);
+        rootCommand.AddOption(helpOption);
 
         // Set handler
-        rootCommand.SetHandler(async (input, output, glossary, engine, translateComments, noHeaders, noFootnotes, keepTrackChanges, style, config, report, log) =>
+        rootCommand.SetHandler(async (input, output, config, glossary, log, verbose, dryRun, force) =>
         {
             try
             {
-                await ProcessDocument(input, output, glossary, engine, translateComments, noHeaders, noFootnotes, keepTrackChanges, style, config, report, log);
+                await ProcessDocument(input, output, config, glossary, log, verbose, dryRun, force);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
                 Environment.Exit(1);
             }
-        }, inputOption, outputOption, glossaryOption, engineOption, translateCommentsOption, noHeadersOption, noFootnotesOption, keepTrackChangesOption, styleOption, configOption, reportOption, logOption);
+        }, inputOption, outputOption, configOption, glossaryOption, logOption, verboseOption, dryRunOption, forceOption);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -107,16 +90,13 @@ class Program
     static async Task ProcessDocument(
         string inputPath,
         string outputPath,
-        string? glossaryPath,
-        string engine,
-        bool translateComments,
-        bool noHeaders,
-        bool noFootnotes,
-        bool keepTrackChanges,
-        string style,
         string? configPath,
-        string? reportPath,
-        string? logPath)
+        string? glossaryPath,
+        string? logPath,
+        bool verbose,
+        bool dryRun,
+        bool force
+        )
     {
         // Setup logging
         var loggerFactory = LoggerFactory.Create(builder =>
@@ -125,7 +105,7 @@ class Program
             if (!string.IsNullOrEmpty(logPath))
             {
                 // Add file logging if path specified
-                builder.AddFile(logPath);
+                Console.WriteLine($"Logging to: {logPath}");
             }
         });
 
@@ -134,7 +114,6 @@ class Program
         logger.LogInformation("Starting Docx JA Translator");
         logger.LogInformation("Input: {InputPath}", inputPath);
         logger.LogInformation("Output: {OutputPath}", outputPath);
-        logger.LogInformation("Engine: {Engine}", engine);
 
         // Load configuration
         var configuration = LoadConfiguration(configPath);
@@ -144,18 +123,18 @@ class Program
             inputPath,
             outputPath,
             glossaryPath,
-            engine,
-            translateComments,
-            !noHeaders,
-            !noFootnotes,
-            keepTrackChanges,
-            style,
+            "openai", // Default engine for now
+            true, // Default translate comments
+            true, // Default no headers
+            true, // Default no footnotes
+            true, // Default keep track changes
+            "tech-ja-keitei", // Default style
             configPath
         );
 
         // Setup services
         var services = new ServiceCollection();
-        ConfigureServices(services, configuration, engine);
+        ConfigureServices(services, configuration, "openai"); // Default engine for now
         var serviceProvider = services.BuildServiceProvider();
 
         // Get required services
@@ -166,9 +145,9 @@ class Program
         var report = await processor.ExecuteAsync(options);
 
         // Write report
-        if (!string.IsNullOrEmpty(reportPath))
+        if (!string.IsNullOrEmpty(logPath))
         {
-            await WriteReport(report, reportPath);
+            await WriteReport(report, logPath);
         }
 
         // Display summary
@@ -186,14 +165,21 @@ class Program
 
     static IConfiguration LoadConfiguration(string? configPath)
     {
+        // Build configuration
         var builder = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddEnvironmentVariables();
+            .AddJsonFile("appsettings.json", optional: true);
 
         if (!string.IsNullOrEmpty(configPath) && File.Exists(configPath))
         {
-            builder.AddYamlFile(configPath, optional: false);
+            if (configPath.EndsWith(".json"))
+            {
+                builder.AddJsonFile(configPath, optional: false);
+            }
+            else
+            {
+                Console.WriteLine($"Warning: Configuration file {configPath} is not JSON. Only appsettings.json and environment variables will be used.");
+            }
         }
 
         return builder.Build();

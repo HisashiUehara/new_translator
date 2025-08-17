@@ -1,7 +1,7 @@
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
-using DocumentFormat.OpenXml.Drawing;
+using WordText = DocumentFormat.OpenXml.Wordprocessing.Text;
+using DrawingText = DocumentFormat.OpenXml.Drawing.Text;
 using DocxJaTranslator.Interfaces;
 using DocxJaTranslator.Models;
 using System.Xml;
@@ -85,22 +85,22 @@ public sealed class TextReinserter : IReinserter
 
     private void UpdateDrawingText(TextNode node, string text, OpenXmlPartContainer root)
     {
-        // Handle DrawingML text elements
-        var xpathParts = ParseXPath(node.XPath);
-        
+        // Handle DrawingML text elements by searching through all elements
         if (root is WordprocessingDocument wordDoc)
         {
             var mainPart = wordDoc.MainDocumentPart;
             if (mainPart?.Document?.Body != null)
             {
-                var drawingElement = FindDrawingElementByXPath(mainPart.Document.Body, xpathParts);
-                if (drawingElement != null)
+                var textElements = mainPart.Document.Body.Descendants<DrawingText>();
+                var targetElement = textElements.FirstOrDefault(e => 
                 {
-                    var textElement = drawingElement.Descendants<Drawing.Text>().FirstOrDefault();
-                    if (textElement != null)
-                    {
-                        textElement.Text = text;
-                    }
+                    // Simple matching logic - could be improved with proper XPath
+                    return e.Text != null && e.Text.Contains(node.RawText);
+                });
+                
+                if (targetElement != null)
+                {
+                    targetElement.Text = text;
                 }
             }
         }
@@ -146,21 +146,22 @@ public sealed class TextReinserter : IReinserter
 
     private void ClearDrawingText(TextNode node, OpenXmlPartContainer root)
     {
-        var xpathParts = ParseXPath(node.XPath);
-        
+        // Handle DrawingML text elements by searching through all elements
         if (root is WordprocessingDocument wordDoc)
         {
             var mainPart = wordDoc.MainDocumentPart;
             if (mainPart?.Document?.Body != null)
             {
-                var drawingElement = FindDrawingElementByXPath(mainPart.Document.Body, xpathParts);
-                if (drawingElement != null)
+                var textElements = mainPart.Document.Body.Descendants<DrawingText>();
+                var targetElement = textElements.FirstOrDefault(e => 
                 {
-                    var textElement = drawingElement.Descendants<Drawing.Text>().FirstOrDefault();
-                    if (textElement != null)
-                    {
-                        textElement.Text = string.Empty;
-                    }
+                    // Simple matching logic - could be improved with proper XPath
+                    return e.Text != null && e.Text.Contains(node.RawText);
+                });
+                
+                if (targetElement != null)
+                {
+                    targetElement.Text = string.Empty;
                 }
             }
         }
@@ -173,7 +174,7 @@ public sealed class TextReinserter : IReinserter
                    .ToArray();
     }
 
-    private Text? FindTextElementByXPath(OpenXmlElement root, string[] xpathParts)
+    private WordText? FindTextElementByXPath(OpenXmlElement root, string[] xpathParts)
     {
         var current = root;
         
@@ -183,26 +184,7 @@ public sealed class TextReinserter : IReinserter
             
             if (part == "t")
             {
-                return current as Text;
-            }
-            
-            current = current.Elements().FirstOrDefault(e => e.LocalName == part);
-        }
-        
-        return null;
-    }
-
-    private Drawing? FindDrawingElementByXPath(OpenXmlElement root, string[] xpathParts)
-    {
-        var current = root;
-        
-        foreach (var part in xpathParts)
-        {
-            if (current == null) break;
-            
-            if (part == "drawing")
-            {
-                return current as Drawing;
+                return current as WordText;
             }
             
             current = current.Elements().FirstOrDefault(e => e.LocalName == part);

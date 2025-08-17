@@ -22,7 +22,7 @@ docxja --input document.docx --output document-ja.docx \
 ```bash
 # Use YAML configuration file
 docxja --input document.docx --output document-ja.docx \
-       --config my-config.yaml --report translation-report.json
+       --config my-config.json --report translation-report.json
 ```
 
 ### Selective Translation
@@ -70,31 +70,39 @@ export DEEPL_API_KEY="your-deepl-api-key-here"
 }
 ```
 
-### config.yaml
-```yaml
-style: tech-ja-keitei
-segmentation:
-  headings_as_blocks: true
-  list_items_as_blocks: true
-translator:
-  type: openai
-  concurrency: 3
-  max_chars_per_call: 1500
-  retry:
-    max_attempts: 3
-    backoff_ms: 500
-security:
-  redact_logs: true
-parts:
-  charts: false
-  smartart: false
-  comments: true
-  headers_footers: true
-  footnotes: true
-report:
-  diff: true
-  summary: true
-  format: json
+### config.json
+```json
+{
+  "style": "tech-ja-keitei",
+  "segmentation": {
+    "headings_as_blocks": true,
+    "list_items_as_blocks": true
+  },
+  "translator": {
+    "type": "openai",
+    "concurrency": 3,
+    "max_chars_per_call": 1500,
+    "retry": {
+      "max_attempts": 3,
+      "backoff_ms": 500
+    }
+  },
+  "security": {
+    "redact_logs": true
+  },
+  "parts": {
+    "charts": false,
+    "smartart": false,
+    "comments": true,
+    "headers_footers": true,
+    "footnotes": true
+  },
+  "report": {
+    "diff": true,
+    "summary": true,
+    "format": "json"
+  }
+}
 ```
 
 ## Glossary Format
@@ -241,7 +249,7 @@ docxja --input document.docx --output document-ja.docx \
 ## Integration Examples
 
 ### CI/CD Pipeline
-```yaml
+```json
 - name: Translate Documentation
   run: |
     docxja --input docs/manual.docx \

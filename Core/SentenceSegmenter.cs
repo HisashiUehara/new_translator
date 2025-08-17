@@ -1,5 +1,6 @@
 using DocxJaTranslator.Interfaces;
 using DocxJaTranslator.Models;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace DocxJaTranslator.Core;
