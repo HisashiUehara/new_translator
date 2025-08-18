@@ -138,7 +138,7 @@ class Program
         var serviceProvider = services.BuildServiceProvider();
 
         // Get required services
-        var processor = serviceProvider.GetRequiredService<DocxProcessor>();
+        var processor = serviceProvider.GetRequiredService<DocumentProcessor>();
         var glossary = !string.IsNullOrEmpty(glossaryPath) ? Glossary.Load(glossaryPath) : null;
 
         // Process document
@@ -189,9 +189,11 @@ class Program
     {
         // Core services
         services.AddSingleton<OpenXmlScanner>();
+        services.AddSingleton<PresentationScanner>();
         services.AddSingleton<ISegmenter, SentenceSegmenter>();
         services.AddSingleton<DntProtector>();
         services.AddSingleton<IReinserter, TextReinserter>();
+        services.AddSingleton<PresentationReinserter>();
 
         // Translator factory
         services.AddTransient<ITranslator>(provider =>
@@ -205,8 +207,8 @@ class Program
             };
         });
 
-        // Main processor
-        services.AddTransient<DocxProcessor>();
+        // Main processor - now supports both Word and PowerPoint
+        services.AddTransient<DocumentProcessor>();
     }
 
     static ITranslator CreateOpenAiTranslator(IConfiguration configuration)

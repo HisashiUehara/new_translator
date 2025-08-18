@@ -45,61 +45,98 @@ public sealed class DocxProcessor
         
         try
         {
-            // Step 1: Copy input file to output location
-            var outputPath = CopyInputFile(options.InputPath, options.OutputPath);
+            // Determine document type
+            var isPowerPoint = IsPowerPointFile(options.InputPath);
             
-            // Step 2: Open the document
-            using var doc = WordprocessingDocument.Open(outputPath, true);
-            
-            // Step 3: Collect text nodes
-            var nodes = _scanner.CollectTextNodes(doc, options);
-            var nodeCount = nodes.Count();
-            
-            // Step 4: Build segments
-            var segments = _segmenter.Build(nodes).ToList();
-            var segmentCount = segments.Count;
-            
-            // Step 5: Apply DNT masking and glossary
-            var maskedSegments = ApplyDntAndGlossary(segments);
-            var dntCount = maskedSegments.Sum(s => s.DntTokenCount);
-            
-            // Step 6: Batch segments for translation
-            var batches = CreateBatches(maskedSegments, _translator.MaxCharsPerCall);
-            
-            // Step 7: Translate batches
-            var translationResults = await TranslateBatches(batches, options);
-            var apiCalls = translationResults.Count;
-            
-            // Step 8: Unmask and prepare for reinsertion
-            var finalResults = UnmaskResults(maskedSegments, translationResults);
-            
-            // Step 9: Reinsert translated text
-            _reinserter.Apply(finalResults, doc.MainDocumentPart);
-            
-            // Step 10: Save and validate
-            doc.Save();
-            
-            // Calculate statistics
-            var charsIn = segments.Sum(s => s.SourceText.Length);
-            var charsOut = finalResults.Sum(r => r.ja.Length);
-            var processingTime = stopwatch.ElapsedMilliseconds;
-            
-            return new RunReport(
-                nodeCount,
-                segmentCount,
-                dntCount,
-                _glossary?.Count ?? 0,
-                apiCalls,
-                charsIn,
-                charsOut,
-                processingTime
-            );
+            if (isPowerPoint)
+            {
+                return await ProcessPowerPointAsync(options, stopwatch);
+            }
+            else
+            {
+                return await ProcessWordAsync(options, stopwatch);
+            }
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            throw new Exception($"Translation failed: {ex.Message}", ex);
+            throw new InvalidOperationException($"Translation failed: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>
+    /// Check if file is PowerPoint format
+    /// </summary>
+    private bool IsPowerPointFile(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension == ".pptx";
+    }
+
+    /// <summary>
+    /// Process PowerPoint document
+    /// </summary>
+    private async Task<RunReport> ProcessPowerPointAsync(DocxOptions options, Stopwatch stopwatch)
+    {
+        // Basic PowerPoint processing for now
+        // TODO: Implement full PowerPoint support
+        throw new NotImplementedException("PowerPoint support is not yet fully implemented. Please use .docx files for now.");
+    }
+
+    /// <summary>
+    /// Process Word document (original implementation)
+    /// </summary>
+    private async Task<RunReport> ProcessWordAsync(DocxOptions options, Stopwatch stopwatch)
+    {
+        // Step 1: Copy input file to output location
+        var outputPath = CopyInputFile(options.InputPath, options.OutputPath);
+        
+        // Step 2: Open the document
+        using var doc = WordprocessingDocument.Open(outputPath, true);
+        
+        // Step 3: Collect text nodes
+        var nodes = _scanner.CollectTextNodes(doc, options);
+        var nodeCount = nodes.Count();
+        
+        // Step 4: Build segments
+        var segments = _segmenter.Build(nodes).ToList();
+        var segmentCount = segments.Count;
+        
+        // Step 5: Apply DNT masking and glossary
+        var maskedSegments = ApplyDntAndGlossary(segments);
+        var dntCount = maskedSegments.Sum(s => s.DntTokenCount);
+        
+        // Step 6: Batch segments for translation
+        var batches = CreateBatches(maskedSegments, _translator.MaxCharsPerCall);
+        
+        // Step 7: Translate batches
+        var translationResults = await TranslateBatches(batches, options);
+        var apiCalls = translationResults.Count;
+        
+        // Step 8: Unmask and prepare for reinsertion
+        var finalResults = UnmaskResults(maskedSegments, translationResults);
+        
+        // Step 9: Reinsert translated text
+        _reinserter.Apply(finalResults, doc.MainDocumentPart);
+        
+        // Step 10: Save and validate
+        doc.Save();
+        
+        // Calculate statistics
+        var charsIn = segments.Sum(s => s.SourceText.Length);
+        var charsOut = finalResults.Sum(r => r.ja.Length);
+        var processingTime = stopwatch.ElapsedMilliseconds;
+        
+        return new RunReport(
+            nodeCount,
+            segmentCount,
+            dntCount,
+            _glossary?.Count ?? 0,
+            apiCalls,
+            charsIn,
+            charsOut,
+            processingTime
+        );
     }
 
     private string CopyInputFile(string inputPath, string outputPath)

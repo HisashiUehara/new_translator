@@ -1,0 +1,52 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# API Keys and configuration
+config.json
+appsettings.json
+appsettings.*.json
+
+# Build outputs
+bin/
+obj/
+publish/
+*.exe
+*.dll
+*.pdb
+
+# IDE and editor files
+.vs/
+.vscode/
+*.user
+*.suo
+*.cache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Test files
+test_content.txt
